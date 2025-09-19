@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include moola_integration *.css
+recursive-include moola_integration *.csv
+recursive-include moola_integration *.html
+recursive-include moola_integration *.ico
+recursive-include moola_integration *.js
+recursive-include moola_integration *.json
+recursive-include moola_integration *.md
+recursive-include moola_integration *.png
+recursive-include moola_integration *.py
+recursive-include moola_integration *.svg
+recursive-include moola_integration *.txt
+recursive-exclude moola_integration *.pyc
