@@ -1,0 +1,27 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-19 05:46:48.165137",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "moola_card_key"
+ ],
+ "fields": [
+  {"fieldname":"moola_card_key","fieldtype":"Data","label":"Moola Card Key (ccMask/walletID)"},
+    {"fieldname":"erpnext_card_account","fieldtype":"Link","label":"ERPNext Card Account","options":"Account"}
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-19 05:46:48.165137",
+ "modified_by": "Administrator",
+ "module": "Moola Integration",
+ "name": "Moola Card Map",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

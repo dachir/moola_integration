@@ -1,0 +1,29 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-19 05:53:29.614849",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "moola_category_key"
+ ],
+ "fields": [
+  {"fieldname":"moola_category_key","fieldtype":"Data","label":"Moola Category Key (ID/Name)"},
+    {"fieldname":"expense_account","fieldtype":"Link","label":"Expense Account","options":"Account"},
+    {"fieldname":"cost_center","fieldtype":"Link","label":"Cost Center","options":"Cost Center"},
+    {"fieldname":"branch","fieldtype":"Link","label":"Branch","options":"Branch"}
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-19 05:53:29.614849",
+ "modified_by": "Administrator",
+ "module": "Moola Integration",
+ "name": "Moola Category Map",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

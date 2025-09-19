@@ -1,0 +1,230 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-19 05:35:55.550929",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "api_base_url",
+  "expense_list_endpoint",
+  "auth_type",
+  "api_key",
+  "basic_username",
+  "basic_password",
+  "section_sync",
+  "page_size",
+  "approved_statuses",
+  "require_settled_cleared",
+  "use_amount_field",
+  "vat_account",
+  "from_date",
+  "last_success_time",
+  "section_mapping",
+  "company",
+  "default_expense_account",
+  "default_cost_center",
+  "default_branch",
+  "posting_date_policy",
+  "section_break_nq7xi",
+  "card_key",
+  "category_key",
+  "branch_key",
+  "cards",
+  "categories",
+  "branches"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "default": "https://integration-hub.moolapay.io",
+   "fieldname": "api_base_url",
+   "fieldtype": "Data",
+   "label": "API Base URL"
+  },
+  {
+   "default": "/api/v1/expense/list",
+   "fieldname": "expense_list_endpoint",
+   "fieldtype": "Data",
+   "label": "Expense List Endpoint"
+  },
+  {
+   "default": "Bearer",
+   "fieldname": "auth_type",
+   "fieldtype": "Select",
+   "label": "Auth Type",
+   "options": "Bearer\nApiKey\nBasic"
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Password",
+   "label": "API Key / Token"
+  },
+  {
+   "fieldname": "basic_username",
+   "fieldtype": "Data",
+   "label": "Basic Username"
+  },
+  {
+   "fieldname": "basic_password",
+   "fieldtype": "Password",
+   "label": "Basic Password"
+  },
+  {
+   "fieldname": "section_sync",
+   "fieldtype": "Section Break",
+   "label": "Sync & Filters"
+  },
+  {
+   "default": "100",
+   "fieldname": "page_size",
+   "fieldtype": "Int",
+   "label": "Page Size"
+  },
+  {
+   "default": "1,2",
+   "fieldname": "approved_statuses",
+   "fieldtype": "Data",
+   "label": "Approved Statuses (CSV)"
+  },
+  {
+   "default": "0",
+   "fieldname": "require_settled_cleared",
+   "fieldtype": "Check",
+   "label": "Require isSettled & isCleared"
+  },
+  {
+   "default": "total",
+   "fieldname": "use_amount_field",
+   "fieldtype": "Select",
+   "label": "Use Amount Field",
+   "options": "total\nnet"
+  },
+  {
+   "fieldname": "vat_account",
+   "fieldtype": "Link",
+   "label": "VAT Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "Backfill From Date"
+  },
+  {
+   "fieldname": "last_success_time",
+   "fieldtype": "Datetime",
+   "label": "Last Success Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_mapping",
+   "fieldtype": "Column Break",
+   "label": "Mappings & Defaults"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "default_expense_account",
+   "fieldtype": "Link",
+   "label": "Default Expense Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "default_cost_center",
+   "fieldtype": "Link",
+   "label": "Default Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "default_branch",
+   "fieldtype": "Link",
+   "label": "Default Branch",
+   "options": "Branch"
+  },
+  {
+   "default": "Use expense.date",
+   "fieldname": "posting_date_policy",
+   "fieldtype": "Select",
+   "label": "Posting Date Policy",
+   "options": "Use expense.date\nUse today"
+  },
+  {
+   "default": "ccMask",
+   "fieldname": "card_key",
+   "fieldtype": "Select",
+   "label": "Card Mapping Key",
+   "options": "ccMask\nwalletID"
+  },
+  {
+   "default": "categoryID",
+   "fieldname": "category_key",
+   "fieldtype": "Select",
+   "label": "Category Mapping Key",
+   "options": "categoryID\ncategoryName"
+  },
+  {
+   "default": "costCenterID",
+   "fieldname": "branch_key",
+   "fieldtype": "Select",
+   "label": "Branch Mapping Key",
+   "options": "costCenterID\ncostCenterName\nuserCode\nnationalId"
+  },
+  {
+   "fieldname": "cards",
+   "fieldtype": "Table",
+   "label": "Moola Card Map",
+   "options": "Moola Card Map"
+  },
+  {
+   "fieldname": "categories",
+   "fieldtype": "Table",
+   "label": "Moola Category Map",
+   "options": "Moola Category Map"
+  },
+  {
+   "fieldname": "branches",
+   "fieldtype": "Table",
+   "label": "Moola Branch Map",
+   "options": "Moola Branch Map"
+  },
+  {
+   "fieldname": "section_break_nq7xi",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-09-19 06:14:24.385770",
+ "modified_by": "Administrator",
+ "module": "Moola Integration",
+ "name": "Moola Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,37 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-19 05:55:41.075121",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "remote_branch_key",
+  "branch"
+ ],
+ "fields": [
+  {
+   "fieldname": "remote_branch_key",
+   "fieldtype": "Data",
+   "label": "Remote Branch Key (costCenterID/Name/userCode/nationalId)"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "ERPNext Branch",
+   "options": "Branch"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-19 05:55:41.075121",
+ "modified_by": "Administrator",
+ "module": "Moola Integration",
+ "name": "Moola Branch Map",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
