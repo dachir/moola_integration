@@ -22,6 +22,7 @@
   "vat_account",
   "from_date",
   "last_success_time",
+  "resync_lookback_days",
   "section_mapping",
   "company",
   "default_expense_account",
@@ -34,7 +35,8 @@
   "branch_key",
   "cards",
   "categories",
-  "branches"
+  "branches",
+  "tag"
  ],
  "fields": [
   {
@@ -179,7 +181,7 @@
    "fieldname": "branch_key",
    "fieldtype": "Select",
    "label": "Branch Mapping Key",
-   "options": "costCenterID\ncostCenterName\nuserCode\nnationalId"
+   "options": "costCenterID\ncostCenterName\nuserCode\nuserName\nnationalId"
   },
   {
    "fieldname": "cards",
@@ -202,12 +204,24 @@
   {
    "fieldname": "section_break_nq7xi",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "tag",
+   "fieldtype": "Table",
+   "label": "Moola Tag Map",
+   "options": "Moola Tag Map"
+  },
+  {
+   "default": "7",
+   "fieldname": "resync_lookback_days",
+   "fieldtype": "Int",
+   "label": "Re-sync Look Back Days"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-19 06:14:24.385770",
+ "modified": "2025-09-23 16:32:01.016394",
  "modified_by": "Administrator",
  "module": "Moola Integration",
  "name": "Moola Settings",

@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-23 04:35:57.742339",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "tagname",
+  "match_on",
+  "moola_value",
+  "accounting_dimension",
+  "dimension_value",
+  "dimension_fieldname"
+ ],
+ "fields": [
+  {
+   "fieldname": "tagname",
+   "fieldtype": "Select",
+   "label": "Tag Name",
+   "options": "VEHICLES\nMACHINERY"
+  },
+  {
+   "fieldname": "match_on",
+   "fieldtype": "Select",
+   "label": "Match On",
+   "options": "tagValueName\ntagValueId"
+  },
+  {
+   "fieldname": "moola_value",
+   "fieldtype": "Data",
+   "label": "Moola Value"
+  },
+  {
+   "fieldname": "accounting_dimension",
+   "fieldtype": "Link",
+   "label": "Accounting Dimension",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "dimension_value",
+   "fieldtype": "Dynamic Link",
+   "label": "Dimension Value",
+   "options": "accounting_dimension"
+  },
+  {
+   "fieldname": "dimension_fieldname",
+   "fieldtype": "Data",
+   "label": "Dimension Fieldname"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-23 05:31:29.250326",
+ "modified_by": "Administrator",
+ "module": "Moola Integration",
+ "name": "Moola Tag Map",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
