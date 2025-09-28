@@ -6,6 +6,10 @@ import requests
 import frappe
 from datetime import timedelta
 from frappe.utils import getdate, nowdate, now_datetime, flt
+import io
+import mimetypes
+from urllib.parse import urlparse
+from frappe.utils.file_manager import save_file
 
 APPROVED_DEFAULTS = {"1", "2"}  # fallback approved statuses
 
@@ -24,6 +28,159 @@ def _pick(obj, key, default=None):
         return obj.get(key, default)
     except Exception:
         return default
+
+def _authz_header_only(s) -> dict:
+    """Build ONLY the Authorization header — reuse the same logic as your fetch."""
+    h = {}
+    if getattr(s, "auth_type", "") == "Basic" and s.basic_username:
+        pwd = s.get_password("basic_password")
+        token = base64.b64encode(f"{(s.basic_username or '').strip()}:{(pwd or '').strip()}".encode()).decode()
+        h["Authorization"] = f"Basic {token}"
+    elif getattr(s, "auth_type", "") == "Bearer" and s.api_key:
+        h["Authorization"] = f"Bearer {s.api_key.strip()}"
+    elif getattr(s, "auth_type", "") == "ApiKey" and s.api_key:
+        h["x-api-key"] = s.api_key.strip()
+    return h
+
+def _iter_expense_attachment_candidates(exp: dict):
+    """
+    Yield normalized candidates from various common keys.
+    Each yielded dict: {url, filename, content_type, data_b64}
+    """
+    arrays = []
+    for k in ("attachments", "files", "receipts"):
+        val = exp.get(k)
+        if isinstance(val, list):
+            arrays.extend(val)
+
+    # normalize list items
+    for item in arrays:
+        url = item.get("url") or item.get("fileUrl")
+        filename = item.get("fileName") or item.get("name")
+        ctype = item.get("contentType")
+        data_b64 = item.get("data")  # base64 inline?
+        yield {"url": url, "filename": filename, "content_type": ctype, "data_b64": data_b64}
+
+    # flat URL fields
+    for k in ("receiptUrl", "attachmentUrl", "documentUrl", "fileUrl"):
+        if exp.get(k):
+            yield {"url": exp.get(k), "filename": None, "content_type": None, "data_b64": None}
+
+    # flat base64 fields
+    for k in ("receiptBase64", "attachmentBase64"):
+        if exp.get(k):
+            # optional hints
+            yield {
+                "url": None,
+                "filename": exp.get("fileName") or exp.get("receiptFileName") or exp.get("attachmentFileName"),
+                "content_type": exp.get("contentType"),
+                "data_b64": exp.get(k)
+            }
+
+def _infer_filename_from_url(url: str) -> str | None:
+    try:
+        path = urlparse(url).path or ""
+        name = path.rsplit("/", 1)[-1] if "/" in path else path
+        return name or None
+    except Exception:
+        return None
+
+def _ext_from_content_type(ct: str | None) -> str:
+    if not ct:
+        return ""
+    ext = mimetypes.guess_extension(ct.split(";")[0].strip())
+    return (ext or "").lstrip(".")
+
+def _safe_filename(preferred: str | None, content_type: str | None, fallback: str) -> str:
+    base = (preferred or fallback or "attachment").strip().replace("/", "_").replace("\\", "_")
+    if "." not in base:
+        ext = _ext_from_content_type(content_type) or "bin"
+        base = f"{base}.{ext}"
+    # strip weird whitespace
+    return " ".join(base.split())
+
+def _file_already_attached(je_name: str, filename: str) -> bool:
+    return bool(frappe.db.exists("File", {
+        "attached_to_doctype": "Journal Entry",
+        "attached_to_name": je_name,
+        "file_name": filename
+    }))
+
+def _download_bytes(url: str, headers: dict) -> tuple[bytes, str | None]:
+    """
+    Return (content_bytes, content_type) or (b"", None) on failure.
+    """
+    try:
+        r = requests.get(url, headers=headers, timeout=60, stream=True)
+        if r.status_code != 200:
+            return b"", None
+        content = r.content  # okay for typical receipt sizes
+        ctype = r.headers.get("Content-Type")
+        return content, ctype
+    except Exception:
+        return b"", None
+
+def _attach_expense_documents(s, exp: dict, je_name: str):
+    """
+    Fetch/attach any documents referenced by the expense onto Journal Entry.
+    - Skips duplicates by filename (per JE).
+    - Uses only Authorization header for remote fetch.
+    - Limits very large files silently (default 20 MB).
+    """
+    MAX_BYTES = int(getattr(s, "max_attachment_bytes", 20 * 1024 * 1024))  # configurable on Settings if you add it
+    authz = _authz_header_only(s)
+
+    for cand in _iter_expense_attachment_candidates(exp):
+        url = cand.get("url")
+        fname = cand.get("filename")
+        ctype_hint = cand.get("content_type")
+        data_b64 = cand.get("data_b64")
+
+        content = b""
+        ctype = ctype_hint
+
+        if data_b64:
+            try:
+                content = base64.b64decode(data_b64, validate=True)
+            except Exception:
+                frappe.log_error("Invalid base64 in expense attachment", "Moola: attachment decode failed")
+                continue
+        elif url:
+            # only fetch http(s)
+            scheme = (urlparse(url).scheme or "").lower()
+            if scheme not in ("http", "https"):
+                continue
+            content, ctype = _download_bytes(url, authz)
+            if not content:
+                frappe.log_error(json.dumps({"url": url}, indent=2), "Moola: attachment download failed")
+                continue
+            if not fname:
+                fname = _infer_filename_from_url(url)
+
+        # size guard
+        if not content or len(content) == 0:
+            continue
+        if len(content) > MAX_BYTES:
+            frappe.log_error(
+                json.dumps({"size": len(content), "limit": MAX_BYTES, "name_hint": fname}, indent=2),
+                "Moola: attachment too large"
+            )
+            continue
+
+        # final filename
+        fallback = f"moola-{_pick(exp,'id') or 'expense'}"
+        filename = _safe_filename(fname, ctype, fallback)
+
+        # duplicate check
+        if _file_already_attached(je_name, filename):
+            continue
+
+        # attach (private by default)
+        try:
+            save_file(filename, content, "Journal Entry", je_name, is_private=1)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Moola: attach file failed")
+
 
 
 def _approved(s, exp):
@@ -392,6 +549,12 @@ def _make_je(s, exp):
         }
     )
     je.insert(ignore_permissions=True)
+
+    try:
+        _attach_expense_documents(s, exp, je.name)
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Moola: attach documents failed")
+
     je.submit()
     return je.name, None
 

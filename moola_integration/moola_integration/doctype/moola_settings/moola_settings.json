@@ -184,18 +184,21 @@
    "options": "costCenterID\ncostCenterName\nuserCode\nuserName\nnationalId"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "cards",
    "fieldtype": "Table",
    "label": "Moola Card Map",
    "options": "Moola Card Map"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "categories",
    "fieldtype": "Table",
    "label": "Moola Category Map",
    "options": "Moola Category Map"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "branches",
    "fieldtype": "Table",
    "label": "Moola Branch Map",
@@ -206,6 +209,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "tag",
    "fieldtype": "Table",
    "label": "Moola Tag Map",
@@ -221,7 +225,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-23 16:32:01.016394",
+ "modified": "2025-09-28 10:03:41.403667",
  "modified_by": "Administrator",
  "module": "Moola Integration",
  "name": "Moola Settings",
