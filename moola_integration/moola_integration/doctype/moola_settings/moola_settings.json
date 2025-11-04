@@ -167,7 +167,7 @@
    "fieldname": "card_key",
    "fieldtype": "Select",
    "label": "Card Mapping Key",
-   "options": "ccMask\nwalletID"
+   "options": "ccMask\nwalletID\nuserName"
   },
   {
    "default": "categoryID",
@@ -225,7 +225,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-09-28 10:03:41.403667",
+ "modified": "2025-11-04 09:14:47.831480",
  "modified_by": "Administrator",
  "module": "Moola Integration",
  "name": "Moola Settings",
