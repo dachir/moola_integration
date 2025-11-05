@@ -289,7 +289,7 @@ def _amounts(s, exp):
 # ---------- Tag → Accounting Dimension ----------
 def _tag_values(expense: dict):
     """Yield normalized tags from payload."""
-    tags = expense.get("tags") or expense.get("tagList") or []
+    tags = expense.get("tags") or expense.get("tagList") or expense.get("expenseTags") or []
     for t in tags:
         yield {
             "tagName": t.get("tagName") or t.get("name") or "",
