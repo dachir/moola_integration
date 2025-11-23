@@ -305,36 +305,46 @@ def _dimensions_from_tags(expense: dict, settings) -> dict[str, str]:
     """
     dim_map: dict[str, str] = {}
 
-    rows = getattr(settings, "tag_dimension_map", []) or []
-    if not rows:
-        return dim_map
+    #rows = getattr(settings, "tag_dimension_map", []) or []
+    
+    #if not rows:
+    #    return dim_map
 
     # Pre-index settings rows by tag_name
     rows_by_tag = {}
-    for r in rows:
-        rows_by_tag.setdefault((r.tag_name or "").strip().upper(), []).append(r)
+    for r in settings.tag:
+        rows_by_tag.setdefault((r.tagname or "").strip().upper(), []).append(r)
+        
 
     for tag in _tag_values(expense):
         tname = (tag["tagName"] or "").strip().upper()
+        tvalue = (tag["tagValueName"] or "").strip().upper()
         if not tname or tname not in rows_by_tag:
             continue
 
+        remote_val = ""
         for r in rows_by_tag[tname]:
             # choose which key to compare
-            if (r.match_on or "tagValueId") == "tagValueName":
-                remote_val = tag["tagValueName"]
-                ok = (remote_val or "").strip().lower() == (r.remote_value or "").strip().lower()
+            #frappe.throw(str(tag))
+            if r.match_on == "tagValueName":
+                remote_val = r.moola_value
+                remote_name = r.tagname
+                #ok = (remote_val or "").strip().lower() == (r.remote_value or "").strip().lower()
+                ok = True
             else:
-                remote_val = tag["tagValueId"]
-                ok = str(remote_val or "") == str(r.remote_value or "")
+                #remote_val = tag["tagValueId"]
+                #ok = str(remote_val or "") == str(r.remote_value or "")
+                ok = False
 
             if not ok:
                 continue
 
-            fieldname = (r.dimension_fieldname or "").strip()
-            value = (r.dimension_value or "").strip()
-            if fieldname and value and fieldname not in dim_map:
-                dim_map[fieldname] = value
+            #frappe.throw("remote_val: " + remote_val + " tvalue: " + tvalue + " remote_name: " + remote_name + " tname: " + tname)
+            if remote_val == tvalue and remote_name == tname:
+                fieldname = (r.dimension_fieldname or "").strip()
+                value = (r.dimension_value or "").strip()
+                if fieldname and value and fieldname not in dim_map:
+                    dim_map[fieldname] = value
 
     return dim_map
 
