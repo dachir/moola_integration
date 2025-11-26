@@ -507,7 +507,7 @@ def _make_je(s, exp):
     branch = _derive_branch(s, exp, fallback_branch=cat_branch)
     card_acc = _card_account(s, exp)
     posting = _posting_date(s, exp)
-    desc = (_pick(exp, "note") or f"Moola expense {exp_id} – {_pick(exp, 'merchant') or ''} – {_pick(exp, 'invoiceNo') or ''}").strip()
+    desc = (_pick(exp, "note") | f"Moola expense {exp_id} | {_pick(exp, 'merchant') or ''} | {_pick(exp, 'invoiceNo') or ''}").strip()
 
     debit_expense, extra_vat, credit_total = _amounts(s, exp)
     if credit_total <= 0:
