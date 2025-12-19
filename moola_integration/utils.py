@@ -355,7 +355,7 @@ def _basic_auth_header(user: str, pwd: str) -> str:
     return f"Basic {token}"
 
 
-def _fetch_page(s, page_number, page_size, from_date=None):
+def _fetch_page(s, page_number, page_size, from_date=None, to_date=None):
     """
     Exact match of your working Postman/httpie request:
       - GET
@@ -382,7 +382,7 @@ def _fetch_page(s, page_number, page_size, from_date=None):
 
     if from_date:
         fd = getdate(from_date).isoformat()  # YYYY-MM-DD
-        td = getdate(nowdate()).isoformat()
+        td = getdate(to_date).isoformat() or getdate(nowdate()).isoformat()
         params.update({"FromDate": fd, "ToDate": td})
 
     try:
@@ -660,3 +660,88 @@ def fetch_and_post_expenses(manual=False):
     log.save(ignore_permissions=True)
 
     return {"fetched": fetched, "created": created, "skipped": skipped, "errors": len(errors)}
+
+@frappe.whitelist()
+def fetch_and_post_expenses_range(from_date, to_date, advance_cursor=False):
+    """
+    Manual sync for a fixed date range.
+    No look-back logic.
+    """
+    s = _settings()
+
+    log = frappe.get_doc({
+        "doctype": "Moola Sync Log",
+        "run_started_at": now_datetime(),
+        "status": "Success",
+        "fetched_count": 0,
+        "created_je_count": 0,
+        "skipped_count": 0,
+        "message": f"Manual run from {getdate(from_date)} to {getdate(to_date)}",
+    }).insert(ignore_permissions=True)
+
+    fetched = created = skipped = 0
+    errors = []
+
+    page = 1
+    page_size = int(getattr(s, "page_size", None) or 100)
+
+    from_date = getdate(from_date)
+    to_date = getdate(to_date)
+
+    while True:
+        data = _fetch_page(
+            s,
+            page,
+            page_size,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+        items = (data or {}).get("data") or []
+        fetched += len(items)
+
+        for exp in items:
+            try:
+                if not _approved(s, exp):
+                    skipped += 1
+                    continue
+
+                je_name, _ = _make_je(s, exp)
+                if je_name:
+                    created += 1
+                else:
+                    skipped += 1
+
+            except Exception:
+                skipped += 1
+                exp_id = _pick(exp, "id")
+                errors.append(f"{exp_id}: see 'Moola JE create failed'")
+                frappe.log_error(frappe.get_traceback(), "Moola JE create failed")
+
+        if not (data or {}).get("hasNextPage"):
+            break
+
+        page += 1
+        if page > 10000:
+            errors.append("Safety stop: too many pages")
+            break
+
+    if advance_cursor and not errors and (created > 0 or fetched == 0):
+        s.last_success_time = now_datetime()
+        s.save(ignore_permissions=True)
+
+    log.fetched_count = fetched
+    log.created_je_count = created
+    log.skipped_count = skipped
+    if errors:
+        log.status = "Partial"
+        log.message = "\n".join(errors)[:1400]
+
+    log.save(ignore_permissions=True)
+
+    return {
+        "fetched": fetched,
+        "created": created,
+        "skipped": skipped,
+        "errors": len(errors),
+    }

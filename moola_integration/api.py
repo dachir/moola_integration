@@ -20,3 +20,23 @@ def sync_from_date(from_date: str, advance_cursor: int = 0):
     dt = getdate(from_date)  # validates & normalizes
     res = utils.fetch_and_post_expenses_from(dt, advance_cursor=bool(int(advance_cursor or 0)))
     return res
+
+@frappe.whitelist()
+def sync_by_period(from_date: str, to_date: str, advance_cursor: int = 0):
+    """
+    Manual sync for a specific date range.
+    Does NOT advance last_success_time unless explicitly requested.
+    """
+    frappe.only_for("System Manager")
+
+    fd = getdate(from_date)
+    td = getdate(to_date)
+
+    if td < fd:
+        frappe.throw("To Date cannot be earlier than From Date")
+
+    return utils.fetch_and_post_expenses_range(
+        from_date=fd,
+        to_date=td,
+        advance_cursor=bool(int(advance_cursor or 0)),
+    )
