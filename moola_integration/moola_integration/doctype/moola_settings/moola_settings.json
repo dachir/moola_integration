@@ -225,7 +225,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-04 09:14:47.831480",
+ "modified": "2026-03-01 13:52:34.654980",
  "modified_by": "Administrator",
  "module": "Moola Integration",
  "name": "Moola Settings",
@@ -238,6 +238,15 @@
    "print": 1,
    "read": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Accounts User",
    "share": 1,
    "write": 1
   }

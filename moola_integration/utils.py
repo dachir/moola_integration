@@ -259,7 +259,10 @@ def _derive_branch(s, exp, fallback_branch=None):
 
 
 def _already_posted(exp_id):
-    return bool(frappe.db.exists("Journal Entry", {"moola_transaction_id": str(exp_id)}))
+    return bool(frappe.db.exists(
+        "Journal Entry",
+        {"moola_transaction_id": str(exp_id), "docstatus": 1}
+    ))
 
 
 def _amounts(s, exp):

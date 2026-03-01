@@ -27,7 +27,6 @@ def sync_by_period(from_date: str, to_date: str, advance_cursor: int = 0):
     Manual sync for a specific date range.
     Does NOT advance last_success_time unless explicitly requested.
     """
-    frappe.only_for("System Manager")
 
     fd = getdate(from_date)
     td = getdate(to_date)
