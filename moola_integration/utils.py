@@ -259,10 +259,17 @@ def _derive_branch(s, exp, fallback_branch=None):
 
 
 def _already_posted(exp_id):
-    return bool(frappe.db.exists(
+    if not exp_id:
+        return None
+
+    return frappe.db.get_value(
         "Journal Entry",
-        {"moola_transaction_id": str(exp_id), "docstatus": 1}
-    ))
+        {
+            "moola_transaction_id": str(exp_id),
+            "docstatus": ["!=", 2]
+        },
+        "name"
+    )
 
 
 def _amounts(s, exp):
@@ -500,8 +507,9 @@ def _make_je(s, exp):
     exp_id = _pick(exp, "id")
     if not exp_id:
         return None, "no id"
-    if _already_posted(exp_id):
-        return None, "duplicate"
+    existing_je = _already_posted(exp_id)
+    if existing_je:
+        return None, "duplicate: " + existing_je
     if not _approved(s, exp):
         return None, "not approved"
 
@@ -570,6 +578,9 @@ def _make_je(s, exp):
         }
     )
     je.insert(ignore_permissions=True)
+    existing_je = _already_posted(exp_id)
+    if existing_je:
+        return None, "duplicate: " + existing_je
 
     try:
         _attach_expense_documents(s, exp, je.name)
