@@ -629,8 +629,10 @@ def fetch_and_post_expenses(manual=False):
                 je_name, reason = _make_je(s, exp)
                 if je_name:
                     created += 1
+                    frappe.db.commit()
                 else:
                     skipped += 1
+                    frappe.db.commit()
             except Exception:
                 skipped += 1
                 # Log full traceback; also store a concise error for the run summary
@@ -638,6 +640,7 @@ def fetch_and_post_expenses(manual=False):
                 exp_id = _pick(exp, "id")
                 errors.append(f"{exp_id}: see 'Moola JE create failed'")
                 frappe.log_error(tb, "Moola JE create failed")
+                frappe.db.commit()
 
         has_next = (data or {}).get("hasNextPage")
         if not has_next:
@@ -712,14 +715,17 @@ def fetch_and_post_expenses_range(from_date, to_date, advance_cursor=False):
                 je_name, _ = _make_je(s, exp)
                 if je_name:
                     created += 1
+                    frappe.db.commit()
                 else:
                     skipped += 1
+                    frappe.db.commit()
 
             except Exception:
                 skipped += 1
                 exp_id = _pick(exp, "id")
                 errors.append(f"{exp_id}: see 'Moola JE create failed'")
                 frappe.log_error(frappe.get_traceback(), "Moola JE create failed")
+                frappe.db.commit()
 
         if not (data or {}).get("hasNextPage"):
             break
@@ -747,4 +753,21 @@ def fetch_and_post_expenses_range(from_date, to_date, advance_cursor=False):
         "created": created,
         "skipped": skipped,
         "errors": len(errors),
+    }
+
+@frappe.whitelist()
+def enqueue_fetch_and_post_expenses_range(from_date, to_date, advance_cursor=False):
+    frappe.enqueue(
+        "moola_integration.utils.fetch_and_post_expenses_range",
+        queue="long",
+        timeout=7200,
+        is_async=True,
+        from_date=from_date,
+        to_date=to_date,
+        advance_cursor=advance_cursor,
+    )
+
+    return {
+        "status": "queued",
+        "message": "Moola sync has been queued in background."
     }

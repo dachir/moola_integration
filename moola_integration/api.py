@@ -34,7 +34,7 @@ def sync_by_period(from_date: str, to_date: str, advance_cursor: int = 0):
     if td < fd:
         frappe.throw("To Date cannot be earlier than From Date")
 
-    return utils.fetch_and_post_expenses_range(
+    return utils.enqueue_fetch_and_post_expenses_range(
         from_date=fd,
         to_date=td,
         advance_cursor=bool(int(advance_cursor or 0)),
