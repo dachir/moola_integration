@@ -578,9 +578,6 @@ def _make_je(s, exp):
         }
     )
     je.insert(ignore_permissions=True)
-    existing_je = _already_posted(exp_id)
-    if existing_je:
-        return None, "duplicate: " + existing_je
 
     try:
         _attach_expense_documents(s, exp, je.name)

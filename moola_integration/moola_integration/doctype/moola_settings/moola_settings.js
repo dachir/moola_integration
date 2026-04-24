@@ -46,12 +46,17 @@ frappe.ui.form.on('Moola Settings', {
               callback: (r) => {
                 if (r.message) {
                   const { fetched, created, skipped, errors } = r.message;
-                  frappe.msgprint(
-                    __(
-                      'Sync complete.<br>Fetched: {0}<br>Created JE: {1}<br>Skipped: {2}<br>Errors: {3}',
-                      [fetched, created, skipped, errors]
-                    )
-                  );
+                  frappe.msgprint({
+                      title: __("Moola Sync"),
+                      message: `
+                          <b>Sync has been queued successfully.</b><br><br>
+                          Period: ${from_date} → ${to_date}<br><br>
+                          Results will be available in:<br>
+                          • Background Jobs<br>
+                          • Moola Sync Log
+                      `,
+                      indicator: "blue"
+                  });
                   frm.reload_doc();
                 }
               },
