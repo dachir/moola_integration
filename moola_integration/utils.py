@@ -4,8 +4,8 @@ import json
 import base64
 import requests
 import frappe
-from datetime import timedelta
-from frappe.utils import getdate, nowdate, now_datetime, flt
+from datetime import datetime, time, timedelta
+from frappe.utils import cint, getdate, get_datetime, nowdate, now_datetime, flt
 import io
 import mimetypes
 from urllib.parse import urlparse
@@ -432,74 +432,7 @@ def _fetch_page(s, page_number, page_size, from_date=None, to_date=None):
             raise frappe.ValidationError("Remote API returned non-JSON response. Check Error Log.")
 @frappe.whitelist()
 def fetch_and_post_expenses_from(from_date, advance_cursor=False):
-    """
-    One-off sync starting at `from_date` (date or YYYY-MM-DD string).
-    - No look-back window is applied.
-    - Does not advance last_success_time unless advance_cursor=True.
-    """
-    s = _settings()
-
-    # local logger entry
-    log = frappe.get_doc({
-        "doctype": "Moola Sync Log",
-        "run_started_at": now_datetime(),
-        "status": "Success",
-        "fetched_count": 0,
-        "created_je_count": 0,
-        "skipped_count": 0,
-        "message": f"Manual run from {getdate(from_date).isoformat()}",
-    }).insert(ignore_permissions=True)
-
-    fetched = created = skipped = 0
-    errors = []
-
-    page = 1
-    page_size = int(getattr(s, "page_size", None) or 100)
-    from_date = getdate(from_date)  # ensure date obj
-
-    while True:
-        data = _fetch_page(s, page, page_size, from_date)
-        items = (data or {}).get("data") or []
-        fetched += len(items)
-
-        for exp in items:
-            try:
-                if not _approved(s, exp):
-                    skipped += 1
-                    continue
-                je_name, reason = _make_je(s, exp)
-                if je_name:
-                    created += 1
-                else:
-                    skipped += 1
-            except Exception:
-                skipped += 1
-                errors.append(f"{_pick(exp,'id')}: see 'Moola JE create failed'")
-                frappe.log_error(frappe.get_traceback(), "Moola JE create failed")
-
-        if not ((data or {}).get("hasNextPage")):
-            break
-
-        page += 1
-        if page > 10000:
-            errors.append("Safety stop: too many pages")
-            break
-
-    # cursor policy for this manual run
-    if advance_cursor and len(errors) == 0 and (created > 0 or fetched == 0):
-        s.last_success_time = now_datetime()
-        s.save(ignore_permissions=True)
-
-    # finalize log
-    log.fetched_count = fetched
-    log.created_je_count = created
-    log.skipped_count = skipped
-    if errors:
-        log.status = "Partial"
-        log.message = "\n".join(errors)[:1400]
-    log.save(ignore_permissions=True)
-
-    return {"fetched": fetched, "created": created, "skipped": skipped, "errors": len(errors)}
+    return _run_sync(getdate(from_date), getdate(nowdate()), advance_cursor)
 
 
 # ---------- JE creation ----------
@@ -588,180 +521,102 @@ def _make_je(s, exp):
     return je.name, None
 
 
-# ---------- Main sync ----------
+# ---------- Shared sync engine ----------
+def _sync_from_date(s):
+    configured = getdate(s.from_date) if s.from_date else None
+    cursor = getdate(s.last_success_time) if s.last_success_time else None
+    lookback = max(0, int(s.resync_lookback_days or 0))
+    if not cursor:
+        # An explicit backfill date must never be truncated to the look-back window.
+        return configured or (getdate(nowdate()) - timedelta(days=lookback))
+    start = min(cursor, getdate(nowdate()) - timedelta(days=lookback))
+    return max(start, configured) if configured else start
+
+
 def fetch_and_post_expenses(manual=False):
     s = _settings()
-    lookback_days = int(getattr(s, "resync_lookback_days", 7) or 0)
+    return _run_sync(_sync_from_date(s), getdate(nowdate()), True, settings=s)
 
-    log = frappe.get_doc(
-        {
-            "doctype": "Moola Sync Log",
-            "run_started_at": now_datetime(),
-            "status": "Success",
-            "fetched_count": 0,
-            "created_je_count": 0,
-            "skipped_count": 0,
-            "message": "",
-        }
-    ).insert(ignore_permissions=True)
-
-    fetched = created = skipped = 0
-    errors: list[str] = []
-
-    page = 1
-    page_size = int(getattr(s, "page_size", None) or 100)
-
-    # Compute from_date as a date object (not string) to avoid type issues
-    from_date = None
-    if getattr(s, "last_success_time", None):
-        from_date = getdate(s.last_success_time)
-    elif getattr(s, "from_date", None):
-        from_date = getdate(s.from_date)
-
-    # Rolling look-back to reprocess previously skipped items
-    if lookback_days > 0:
-        lb = getdate(nowdate()) - timedelta(days=lookback_days)
-        from_date = (from_date and max(lb, from_date)) or lb
-
-    # Sync loop
-    while True:
-        data = _fetch_page(s, page, page_size, from_date)
-        items = (data or {}).get("data") or []
-        fetched += len(items)
-
-        for exp in items:
-            try:
-                if not _approved(s, exp):
-                    skipped += 1
-                    continue
-                je_name, reason = _make_je(s, exp)
-                if je_name:
-                    created += 1
-                    frappe.db.commit()
-                else:
-                    skipped += 1
-                    frappe.db.commit()
-            except Exception:
-                skipped += 1
-                # Log full traceback; also store a concise error for the run summary
-                tb = frappe.get_traceback()
-                exp_id = _pick(exp, "id")
-                errors.append(f"{exp_id}: see 'Moola JE create failed'")
-                frappe.log_error(tb, "Moola JE create failed")
-                frappe.db.commit()
-
-        has_next = (data or {}).get("hasNextPage")
-        if not has_next:
-            break
-        page += 1
-        if page > 10000:
-            errors.append("Safety stop: too many pages")
-            break
-
-    # Advance cursor only on clean runs (or if nothing fetched)
-    advance_cursor = (len(errors) == 0) and (created > 0 or fetched == 0)
-    if advance_cursor:
-        s.last_success_time = now_datetime()
-        s.save(ignore_permissions=True)
-
-    # Finalize log
-    log.fetched_count = fetched
-    log.created_je_count = created
-    log.skipped_count = skipped
-    if errors:
-        log.status = "Partial"
-        log.message = "\n".join(errors)[:1400]
-    log.save(ignore_permissions=True)
-
-    return {"fetched": fetched, "created": created, "skipped": skipped, "errors": len(errors)}
 
 @frappe.whitelist()
 def fetch_and_post_expenses_range(from_date, to_date, advance_cursor=False):
-    """
-    Manual sync for a fixed date range.
-    No look-back logic.
-    """
-    s = _settings()
+    return _run_sync(getdate(from_date), getdate(to_date), advance_cursor)
 
+
+def _run_sync(from_date, to_date, advance_cursor=False, settings=None):
+    if to_date < from_date:
+        frappe.throw("To Date cannot be earlier than From Date")
+    s = settings or _settings()
+    started = now_datetime()
     log = frappe.get_doc({
         "doctype": "Moola Sync Log",
-        "run_started_at": now_datetime(),
+        "run_started_at": started,
         "status": "Success",
         "fetched_count": 0,
         "created_je_count": 0,
         "skipped_count": 0,
-        "message": f"Manual run from {getdate(from_date)} to {getdate(to_date)}",
+        "message": f"Sync from {from_date} to {to_date}",
     }).insert(ignore_permissions=True)
-
+    frappe.db.commit()
     fetched = created = skipped = 0
     errors = []
-
     page = 1
-    page_size = int(getattr(s, "page_size", None) or 100)
-
-    from_date = getdate(from_date)
-    to_date = getdate(to_date)
-
-    while True:
-        data = _fetch_page(
-            s,
-            page,
-            page_size,
-            from_date=from_date,
-            to_date=to_date,
-        )
-
-        items = (data or {}).get("data") or []
-        fetched += len(items)
-
-        for exp in items:
-            try:
-                if not _approved(s, exp):
+    page_size = int(s.page_size or 100)
+    try:
+        while True:
+            data = _fetch_page(s, page, page_size, from_date, to_date)
+            items = (data or {}).get("data") or []
+            fetched += len(items)
+            for exp in items:
+                # Roll back the entire expense if insert/submit fails. Never commit
+                # a half-created draft and then mistake it for a completed import.
+                frappe.db.savepoint("moola_expense")
+                try:
+                    je_name, _ = _make_je(s, exp)
+                    if je_name:
+                        created += 1
+                    else:
+                        skipped += 1
+                except Exception:
+                    frappe.db.rollback(save_point="moola_expense")
                     skipped += 1
-                    continue
-
-                je_name, _ = _make_je(s, exp)
-                if je_name:
-                    created += 1
-                    frappe.db.commit()
-                else:
-                    skipped += 1
-                    frappe.db.commit()
-
-            except Exception:
-                skipped += 1
-                exp_id = _pick(exp, "id")
-                errors.append(f"{exp_id}: see 'Moola JE create failed'")
-                frappe.log_error(frappe.get_traceback(), "Moola JE create failed")
+                    errors.append(f"{_pick(exp, 'id')}: see 'Moola JE create failed'")
+                    frappe.log_error(frappe.get_traceback(), "Moola JE create failed")
                 frappe.db.commit()
+            if not (data or {}).get("hasNextPage"):
+                break
+            page += 1
+            if page > 10000:
+                errors.append("Safety stop: too many pages")
+                break
+    except Exception:
+        frappe.db.rollback()
+        log.status = "Failed"
+        log.fetched_count = fetched
+        log.created_je_count = created
+        log.skipped_count = skipped
+        log.message = frappe.get_traceback()
+        log.save(ignore_permissions=True)
+        frappe.db.commit()
+        raise
 
-        if not (data or {}).get("hasNextPage"):
-            break
-
-        page += 1
-        if page > 10000:
-            errors.append("Safety stop: too many pages")
-            break
-
-    if advance_cursor and not errors and (created > 0 or fetched == 0):
-        s.last_success_time = now_datetime()
-        s.save(ignore_permissions=True)
-
+    if cint(advance_cursor) and not errors:
+        # Historical range imports must not move the cursor past their end date.
+        # Capture the run start so expenses arriving during a run are revisited.
+        cursor = min(started, datetime.combine(to_date, time.max))
+        previous = s.last_success_time
+        if not previous or cursor > get_datetime(previous):
+            s.db_set("last_success_time", cursor)
     log.fetched_count = fetched
     log.created_je_count = created
     log.skipped_count = skipped
     if errors:
         log.status = "Partial"
         log.message = "\n".join(errors)[:1400]
-
     log.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"fetched": fetched, "created": created, "skipped": skipped, "errors": len(errors)}
 
-    return {
-        "fetched": fetched,
-        "created": created,
-        "skipped": skipped,
-        "errors": len(errors),
-    }
 
 @frappe.whitelist()
 def enqueue_fetch_and_post_expenses_range(from_date, to_date, advance_cursor=False):
